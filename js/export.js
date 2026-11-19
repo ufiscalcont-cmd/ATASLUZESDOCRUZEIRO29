@@ -32,8 +32,13 @@
     const comTimbre = !!T;
     const tamCab = T && T.cabTam ? T.cabTam * 2 : tam;
 
-    const run = (texto, extra = {}) => new D.TextRun({ text: texto, font: fonte, size: tam, ...extra });
-    const linhaCab = (t) => new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [run(t, { bold: true, size: tamCab })] });
+    // O sinal ∴ não existe na Cambria/Times: no Word ele vira outro caractere.
+    // Cada ∴ vai num trecho com fonte que tem o símbolo (Cambria Math, instalada com o Office).
+    const FONTE_SIMBOLO = 'Cambria Math';
+    const run = (texto, extra = {}) => String(texto).split(/(∴+)/).filter((t) => t !== '').map((t) =>
+      new D.TextRun({ text: t, size: tam, ...extra,
+        font: t.startsWith('∴') ? { ascii: FONTE_SIMBOLO, hAnsi: FONTE_SIMBOLO, cs: FONTE_SIMBOLO, eastAsia: FONTE_SIMBOLO } : fonte }));
+    const linhaCab = (t) => new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: run(t, { bold: true, size: tamCab }) });
 
     const cabFilhos = [];
     if (comTimbre) {
@@ -60,22 +65,22 @@
       ...opts,
     });
     const blocoRuns = (b) => [
-      ...(b.rotulo ? [run(b.rotulo + ':', { bold: true }), run(' ')] : []),
-      run(b.texto.replace(/\s*\n+\s*/g, ' ')),
+      ...(b.rotulo ? [...run(b.rotulo + ':', { bold: true }), ...run(' ')] : []),
+      ...run(b.texto.replace(/\s*\n+\s*/g, ' ')),
     ];
 
     const corpo = [];
     est.titulo.forEach((t, i) => corpo.push(new D.Paragraph({
       alignment: D.AlignmentType.CENTER, spacing: { before: i === 0 ? 240 : 0, after: 240 },
-      children: [run(t, { bold: true })],
+      children: run(t, { bold: true }),
     })));
-    corpo.push(new D.Paragraph({ spacing: { after: 200 }, children: [run('Síntese', { bold: true })] }));
+    corpo.push(new D.Paragraph({ spacing: { after: 200 }, children: run('Síntese', { bold: true }) }));
     est.sintese.forEach((b) => corpo.push(P(blocoRuns(b))));
-    corpo.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: 240, after: 240 }, children: [run('ATA', { bold: true })] }));
+    corpo.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: 240, after: 240 }, children: run('ATA', { bold: true }) }));
 
     if (doc.paragrafoUnico) {
       const runs = [];
-      est.corpo.forEach((b, i) => { if (i) runs.push(run(' ')); runs.push(...blocoRuns(b)); });
+      est.corpo.forEach((b, i) => { if (i) runs.push(...run(' ')); runs.push(...blocoRuns(b)); });
       corpo.push(P(runs));
     } else {
       est.corpo.forEach((b) => corpo.push(P(blocoRuns(b))));
@@ -83,9 +88,9 @@
 
     est.assinaturas.forEach((a, i) => {
       corpo.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: i === 0 ? 720 : 600, after: 0 }, keepNext: true,
-        children: [run('_____________________________________________')] }));
+        children: run('_____________________________________________') }));
       corpo.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 0 }, keepLines: true,
-        children: [run(`${a.cargo} ${a.nome}`.trim())] }));
+        children: run(`${a.cargo} ${a.nome}`.trim()) }));
     });
 
     const documento = new D.Document({
