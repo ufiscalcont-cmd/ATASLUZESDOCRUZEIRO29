@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gerador de Atas · Luzes do Cruzeiro nº 29</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <header class="topo">
+    <div class="marca">
+      <span class="selo">∴</span>
+      <div>
+        <h1>Gerador de Atas</h1>
+        <p id="marca-loja">Loja Maçônica Luzes do Cruzeiro nº 29</p>
+      </div>
+    </div>
+    <nav class="acoes-topo">
+      <button class="btn fantasma" id="btn-nova">+ Nova ata</button>
+      <button class="btn fantasma" id="btn-historico">Histórico</button>
+      <button class="btn fantasma" id="btn-config">Configurações</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="coluna-form">
+
+      <!-- IA -->
+      <article class="card card-ia" id="card-ia">
+        <div class="card-cab">
+          <h2><span class="num">✦</span> Gerar a ata pelo áudio da sessão</h2>
+          <p class="dica">Envie a gravação (ou grave agora). A IA ouve, organiza por seções e preenche tudo abaixo para você revisar.</p>
+        </div>
+        <div class="abas" role="tablist">
+          <button class="aba ativa" data-aba="arquivo">Enviar arquivo</button>
+          <button class="aba" data-aba="gravar">Gravar agora</button>
+          <button class="aba" data-aba="texto">Colar transcrição</button>
+        </div>
+
+        <div class="painel-aba" data-painel="arquivo">
+          <label class="soltar" id="zona-soltar">
+            <input type="file" id="arq-audio" accept="audio/*,video/*,.m4a,.mp3,.ogg,.opus,.wav,.aac,.amr,.webm" hidden>
+            <span class="soltar-icone">🎙</span>
+            <span id="soltar-texto"><b>Clique para escolher</b> ou arraste o áudio aqui<br><small>MP3, M4A, OGG/OPUS (WhatsApp), WAV, AAC, MP4… até 2 GB</small></span>
+          </label>
+        </div>
+
+        <div class="painel-aba" data-painel="gravar" hidden>
+          <div class="gravador">
+            <button class="btn gravar" id="btn-gravar"><span class="ponto"></span> <span id="txt-gravar">Iniciar gravação</span></button>
+            <button class="btn fantasma" id="btn-pausar" disabled>Pausar</button>
+            <span class="cronometro" id="cronometro">00:00:00</span>
+          </div>
+          <p class="dica">Deixe o aparelho perto do Oriente e com a tela ligada. Ao parar, a gravação fica pronta para a IA e você pode baixá-la como cópia de segurança.</p>
+          <div id="gravacao-pronta" hidden>
+            <audio id="player-gravacao" controls></audio>
+            <button class="btn fantasma pequeno" id="btn-baixar-gravacao">Baixar gravação</button>
+          </div>
+        </div>
+
+        <div class="painel-aba" data-painel="texto" hidden>
+          <textarea id="txt-transcricao" rows="7" placeholder="Cole aqui a transcrição ou as anotações feitas durante a sessão (WhatsApp, bloco de notas, Word…)."></textarea>
+        </div>
+
+        <details class="mais">
+          <summary>Orientações extras para a IA (opcional)</summary>
+          <textarea id="txt-instrucoes" rows="2" placeholder="Ex.: o Ir∴ Fulano assumiu como Or∴ ad hoc; não incluir a conversa sobre a reforma do templo."></textarea>
+        </details>
+
+        <div class="linha-acoes">
+          <button class="btn primario" id="btn-gerar-ia">Gerar ata com IA</button>
+          <button class="btn fantasma" id="btn-revisar-ia" title="Corrige ortografia e concordância sem mudar o conteúdo">Revisar redação</button>
+        </div>
+        <div class="progresso" id="progresso" hidden>
+          <div class="barra"><span id="barra"></span></div>
+          <p id="progresso-txt">…</p>
+        </div>
+        <div class="aviso-ia" id="obs-ia" hidden>
+          <b>Pontos para conferir:</b>
+          <p id="obs-ia-txt"></p>
+        </div>
+      </article>
+
+      <!-- Sessão -->
+      <article class="card">
+        <h2><span class="num">1</span> Sessão</h2>
+        <div class="grade g3">
+          <label>Grau
+            <select data-f="grau">
+              <option value="APRENDIZ">Aprendiz</option>
+              <option value="COMPANHEIRO">Companheiro</option>
+              <option value="MESTRE">Mestre</option>
+            </select>
+          </label>
+          <label>Tipo de sessão
+            <input data-f="tipo" list="lista-tipos">
+            <datalist id="lista-tipos"></datalist>
+          </label>
+          <label>Número
+            <input data-f="numero" type="number" min="1">
+          </label>
+          <label>Data
+            <input data-f="data" type="date">
+          </label>
+          <label>Início
+            <input data-f="horaInicio" type="time">
+          </label>
+          <label>Encerramento
+            <input data-f="horaFim" type="time">
+          </label>
+        </div>
+      </article>
+
+      <!-- Presença e oficiais -->
+      <article class="card">
+        <h2><span class="num">2</span> Presença e oficiais</h2>
+        <div class="grade g2">
+          <label>IIr∴ do quadro presentes
+            <input data-f="presentesQuadro" type="number" min="0">
+          </label>
+          <label>Visitantes (quantidade)
+            <input data-f="visitantesQtd" type="number" min="0" placeholder="automático pelos nomes">
+          </label>
+        </div>
+        <label>Nomes dos visitantes <small>(um por linha ou separados por ;)</small>
+          <textarea data-f="visitantesNomes" rows="2" placeholder="Ir∴ Fulano de Tal (Loja Segredo dos 33 nº 09)"></textarea>
+        </label>
+        <div class="oficiais">
+          <label>V∴ M∴ <input data-f="oficiais.vm"></label>
+          <label class="chk"><input type="checkbox" data-f="oficiais.vmAdHoc"> ad hoc</label>
+          <label>1º Vig∴ <input data-f="oficiais.vig1"></label>
+          <label class="chk"><input type="checkbox" data-f="oficiais.vig1AdHoc"> ad hoc</label>
+          <label>2º Vig∴ <input data-f="oficiais.vig2"></label>
+          <label class="chk"><input type="checkbox" data-f="oficiais.vig2AdHoc"> ad hoc</label>
+          <label>Or∴ <input data-f="oficiais.orador"></label>
+          <label class="chk"><input type="checkbox" data-f="oficiais.oradorAdHoc"> ad hoc</label>
+          <label>Sec∴ <input data-f="oficiais.secretario"></label>
+          <label class="chk"><input type="checkbox" data-f="oficiais.secAdHoc"> ad hoc</label>
+        </div>
+      </article>
+
+      <!-- Expediente -->
+      <article class="card">
+        <h2><span class="num">3</span> Balaústre e expediente</h2>
+        <div class="grade g2">
+          <label>Balaústre
+            <select data-f="balaustre.modo">
+              <option value="aprovado">Lido e aprovado por unanimidade</option>
+              <option value="suprimido">Leitura suprimida</option>
+              <option value="texto">Outro (texto livre)</option>
+            </select>
+          </label>
+          <label data-mostrar="balaustre.modo=aprovado">Data do balaústre aprovado
+            <input data-f="balaustre.data" type="date">
+          </label>
+        </div>
+        <label data-mostrar="balaustre.modo=texto">Texto do balaústre
+          <textarea data-f="balaustre.texto" rows="2"></textarea>
+        </label>
+        <label>Atos e decretos <small>(vazio = "Não houve.")</small>
+          <textarea data-f="atos" rows="2"></textarea>
+        </label>
+        <label>Expedientes
+          <textarea data-f="expedientes" rows="4" placeholder="Prancha 08/2025 da Loja ... informa que ...; Edital de iniciação da Loja ..."></textarea>
+        </label>
+        <label>Propostas e informações
+          <textarea data-f="propostas" rows="2"></textarea>
+        </label>
+      </article>
+
+      <!-- Ordem do dia -->
+      <article class="card">
+        <h2><span class="num">4</span> Ordem do dia</h2>
+        <label>Pauta e desenvolvimento <small>(também entra na Síntese)</small>
+          <textarea data-f="ordemDoDia" rows="8" placeholder="Apresentação da instrução ... e o que houver. Após a leitura, o Ir∴ ..."></textarea>
+        </label>
+      </article>
+
+      <!-- Tronco e visitantes -->
+      <article class="card">
+        <h2><span class="num">5</span> Tronco e saudação</h2>
+        <div class="grade g2">
+          <label class="chk alto"><input type="checkbox" data-f="tronco.houve"> Circulou a Bolsa de Beneficência</label>
+          <label data-mostrar="tronco.houve=true">Quilos de medalhas cunhadas
+            <input data-f="tronco.valor" type="number" min="0">
+          </label>
+        </div>
+        <label>Saudação aos visitantes <small>(vazio = texto automático pelos nomes)</small>
+          <textarea data-f="saudacao" rows="2"></textarea>
+        </label>
+      </article>
+
+      <!-- Palavra -->
+      <article class="card">
+        <h2><span class="num">6</span> Palavra a bem da Ordem</h2>
+        <label>No Sul <textarea data-f="palavra.sul" rows="3" placeholder="o Ir∴ ... parabenizou ..."></textarea></label>
+        <label>No Norte <textarea data-f="palavra.norte" rows="3"></textarea></label>
+        <label>No Oriente <textarea data-f="palavra.oriente" rows="3"></textarea></label>
+      </article>
+
+      <!-- Encerramento -->
+      <article class="card">
+        <h2><span class="num">7</span> Encerramento</h2>
+        <div class="grade g2">
+          <label>Data em que a ata foi lavrada
+            <input data-f="dataLavratura" type="date">
+          </label>
+        </div>
+        <details class="mais">
+          <summary>Escrever a Síntese manualmente</summary>
+          <textarea data-f="sinteseManual" rows="3" placeholder="Vazio = Síntese automática (Ordem do Dia + Tronco)"></textarea>
+        </details>
+      </article>
+
+      <div class="barra-final">
+        <button class="btn primario" id="btn-salvar">Salvar</button>
+        <button class="btn" id="btn-docx">Baixar Word</button>
+        <button class="btn" id="btn-pdf">PDF / Imprimir</button>
+        <button class="btn fantasma" id="btn-copiar">Copiar texto</button>
+        <button class="btn fantasma" id="btn-finalizar" title="Marca como definitiva e atualiza a numeração do grau">Finalizar ata</button>
+      </div>
+    </section>
+
+    <aside class="coluna-previa">
+      <div class="previa-cab">
+        <span>Pré-visualização</span>
+        <span class="selo-status" id="status-ata">rascunho</span>
+      </div>
+      <div class="folha" id="folha">
+        <img class="folha-timbre" src="assets/timbre.jpg" alt="" hidden>
+        <div class="folha-cab" id="folha-cab"></div>
+        <div class="folha-texto" id="previa"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- Configurações -->
+<dialog id="dlg-config" class="dialogo">
+  <form method="dialog">
+    <header><h2>Configurações</h2><button class="x" value="cancel" aria-label="Fechar">×</button></header>
+    <div class="dlg-corpo">
+      <h3>Inteligência artificial (Google Gemini)</h3>
+      <p class="dica">Crie uma chave gratuita em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>. A chave fica guardada só neste navegador.</p>
+      <div class="grade g2">
+        <label>Chave da API <input data-c="ia.chave" type="password" autocomplete="off" placeholder="AIza..."></label>
+        <label>Modelo
+          <span class="combo"><input data-c="ia.modelo" list="lista-modelos"><button type="button" class="btn fantasma pequeno" id="btn-modelos">Buscar modelos</button></span>
+          <datalist id="lista-modelos"></datalist>
+        </label>
+      </div>
+      <p class="dica alerta">Atenção ao sigilo: o áudio é processado pelos servidores do Google. No plano gratuito, o Google pode usar o conteúdo para melhorar seus produtos; com faturamento ativo na chave, não usa. Avalie o que gravar.</p>
+
+      <h3>Loja</h3>
+      <div class="grade g2">
+        <label>Nome <input data-c="loja.nome"></label>
+        <label>Número <input data-c="loja.numero"></label>
+        <label>Fundada em <input data-c="loja.fundacao"></label>
+        <label>Jurisdicionada à <input data-c="loja.jurisdicao"></label>
+        <label>Oriente (cidade) <input data-c="loja.oriente"></label>
+        <label>UF / Estado <span class="combo"><input data-c="loja.uf" style="max-width:70px"><input data-c="loja.estado"></span></label>
+        <label>Endereço do Templo <input data-c="loja.endereco"></label>
+        <label>Padroeiro <input data-c="loja.padroeiro"></label>
+      </div>
+
+      <h3>Oficiais (preenchem cada nova ata)</h3>
+      <div class="grade g2">
+        <label>V∴ M∴ <input data-c="oficiais.vm"></label>
+        <label>1º Vig∴ <input data-c="oficiais.vig1"></label>
+        <label>2º Vig∴ <input data-c="oficiais.vig2"></label>
+        <label>Or∴ <input data-c="oficiais.orador"></label>
+        <label>Sec∴ <input data-c="oficiais.secretario"></label>
+      </div>
+
+      <h3>Numeração (última sessão realizada)</h3>
+      <div class="grade g3">
+        <label>Aprendiz <input type="number" data-c="contadores.APRENDIZ"></label>
+        <label>Companheiro <input type="number" data-c="contadores.COMPANHEIRO"></label>
+        <label>Mestre <input type="number" data-c="contadores.MESTRE"></label>
+      </div>
+
+      <h3>Documento</h3>
+      <div class="grade g3">
+        <label>Fonte
+          <select data-c="documento.fonte">
+            <option>Cambria</option><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Georgia</option>
+          </select>
+        </label>
+        <label>Tamanho <input type="number" min="9" max="16" data-c="documento.tamanho"></label>
+        <span></span>
+        <label class="chk"><input type="checkbox" data-c="documento.timbre"> Usar papel timbrado da Loja</label>
+        <label class="chk"><input type="checkbox" data-c="documento.paragrafoUnico"> Corpo da ata em parágrafo único</label>
+      </div>
+
+      <h3>Backup</h3>
+      <div class="linha-acoes">
+        <button type="button" class="btn fantasma" id="btn-exportar">Exportar tudo (.json)</button>
+        <label class="btn fantasma">Importar backup<input type="file" id="arq-importar" accept=".json,application/json" hidden></label>
+      </div>
+      <p class="dica">As atas e configurações ficam salvas no navegador deste aparelho. Exporte um backup de vez em quando ou para levar a outro computador.</p>
+    </div>
+    <footer><button class="btn primario" value="ok">Salvar configurações</button></footer>
+  </form>
+</dialog>
+
+<!-- Histórico -->
+<dialog id="dlg-historico" class="dialogo">
+  <form method="dialog">
+    <header><h2>Atas salvas</h2><button class="x" value="cancel" aria-label="Fechar">×</button></header>
+    <div class="dlg-corpo">
+      <input id="busca-hist" type="search" placeholder="Buscar por número, data ou assunto…">
+      <ul class="lista-hist" id="lista-hist"></ul>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="area-impressao" aria-hidden="true"></div>
+
+<script src="lib/docx.iife.js"></script>
+<script src="js/extenso.js"></script>
+<script src="js/ata.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
