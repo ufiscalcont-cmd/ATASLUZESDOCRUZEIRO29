@@ -18,6 +18,7 @@
   }
 
   let cfg = mesclar(Ata.CONFIG_PADRAO, ler(CH_CFG, {}));
+  if (typeof cfg.documento.timbre === 'boolean') cfg.documento.timbre = cfg.documento.timbre ? 'moderno' : 'nenhum';
   let atas = ler(CH_ATAS, []);
   let ata = null;
   {
@@ -74,8 +75,14 @@
     const folha = $('#folha');
     folha.style.setProperty('--fonte-doc', `'${cfg.documento.fonte}', Cambria, 'Times New Roman', serif`);
     folha.style.setProperty('--tam-doc', `${cfg.documento.tamanho}pt`);
-    folha.classList.toggle('com-timbre', !!cfg.documento.timbre);
-    $('.folha-timbre').hidden = !cfg.documento.timbre;
+    const T = Exportar.timbreAtual(cfg);
+    folha.style.paddingTop = T ? T.previa.topo : '';
+    folha.style.paddingBottom = T ? T.previa.base : '';
+    folha.style.setProperty('--tam-cab', T && T.cabTam ? `${T.cabTam}pt` : `${cfg.documento.tamanho}pt`);
+    folha.style.setProperty('--depois-cab', T ? `${T.imp.depoisCab}mm` : '0');
+    const img = $('.folha-timbre');
+    img.hidden = !T;
+    if (T && !img.src.endsWith(T.img)) img.src = T.img;
     $('#folha-cab').innerHTML = est.cabecalho.map((l) => `<p>${Ata.esc(l)}</p>`).join('');
     $('#previa').innerHTML = Ata.paraHTML(est, cfg).replace(/_{3,}[^<]*?(?=<|$)/g, (m) => `<span class="vazio">${m}</span>`);
     const st = $('#status-ata');

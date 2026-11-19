@@ -2,12 +2,25 @@
 (function (global) {
   const cm = (v) => Math.round(v * 567); // centímetros -> twips
 
-  let timbreCache = null;
-  async function timbreBytes() {
-    if (timbreCache) return timbreCache;
-    const r = await fetch('assets/timbre.jpg');
-    timbreCache = new Uint8Array(await r.arrayBuffer());
-    return timbreCache;
+  // Papéis timbrados: imagem de página inteira + margens próprias (cm no Word, mm na impressão)
+  const TIMBRES = {
+    classico: { img: 'assets/timbre.jpg', cabTam: null,
+      docx: { top: 6.2, bottom: 3.2, header: 3.4, footer: 1.2 }, imp: { topo: 34, base: 30, depoisCab: 4 }, previa: { topo: '16%', base: '13%' } },
+    moderno: { img: 'assets/timbre-moderno.jpg', cabTam: 11,
+      docx: { top: 4.9, bottom: 3.1, header: 1.05, footer: 1.9 }, imp: { topo: 10.5, base: 27, depoisCab: 9 }, previa: { topo: '5%', base: '14%' } },
+  };
+  function timbreAtual(cfg) {
+    let t = cfg.documento.timbre;
+    if (t === true) t = 'moderno';
+    return TIMBRES[t] || null;
+  }
+
+  const timbreCache = {};
+  async function timbreBytes(url) {
+    if (timbreCache[url]) return timbreCache[url];
+    const r = await fetch(url);
+    timbreCache[url] = new Uint8Array(await r.arrayBuffer());
+    return timbreCache[url];
   }
 
   async function gerarDocx(est, cfg) {
@@ -15,17 +28,19 @@
     const doc = cfg.documento;
     const fonte = doc.fonte || 'Cambria';
     const tam = (Number(doc.tamanho) || 12) * 2;
-    const comTimbre = !!doc.timbre;
+    const T = timbreAtual(cfg);
+    const comTimbre = !!T;
+    const tamCab = T && T.cabTam ? T.cabTam * 2 : tam;
 
     const run = (texto, extra = {}) => new D.TextRun({ text: texto, font: fonte, size: tam, ...extra });
-    const linhaCab = (t) => new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [run(t, { bold: true })] });
+    const linhaCab = (t) => new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [run(t, { bold: true, size: tamCab })] });
 
     const cabFilhos = [];
     if (comTimbre) {
       cabFilhos.push(new D.Paragraph({
         children: [new D.ImageRun({
           type: 'jpg',
-          data: await timbreBytes(),
+          data: await timbreBytes(T.img),
           transformation: { width: 794, height: 1123 },
           floating: {
             horizontalPosition: { relative: D.HorizontalPositionRelativeFrom.PAGE, offset: 0 },
@@ -82,7 +97,7 @@
           page: {
             size: { width: cm(21), height: cm(29.7) },
             margin: comTimbre
-              ? { top: cm(6.2), bottom: cm(3.2), left: cm(3), right: cm(2), header: cm(3.4), footer: cm(1.2) }
+              ? { top: cm(T.docx.top), bottom: cm(T.docx.bottom), left: cm(3), right: cm(2), header: cm(T.docx.header), footer: cm(T.docx.footer) }
               : { top: cm(4.6), bottom: cm(2.2), left: cm(3), right: cm(2), header: cm(1.4), footer: cm(1.2) },
           },
         },
@@ -108,11 +123,14 @@
     const area = document.getElementById('area-impressao');
     const doc = cfg.documento;
     const esc = global.Ata.esc;
-    const topo = doc.timbre ? 34 : 14, base = doc.timbre ? 30 : 18;
+    const T = timbreAtual(cfg);
+    const topo = T ? T.imp.topo : 14, base = T ? T.imp.base : 18;
+    area.style.setProperty('--tam-cab', T && T.cabTam ? `${T.cabTam}pt` : `${doc.tamanho || 12}pt`);
+    area.style.setProperty('--depois-cab', `${T ? T.imp.depoisCab : 4}mm`);
     area.style.setProperty('--fonte-doc', `'${doc.fonte || 'Cambria'}', Cambria, 'Times New Roman', serif`);
     area.style.setProperty('--tam-doc', `${doc.tamanho || 12}pt`);
     area.innerHTML = `
-      ${doc.timbre ? '<img class="imp-timbre" src="assets/timbre.jpg" alt="">' : ''}
+      ${T ? `<img class="imp-timbre" src="${T.img}" alt="">` : ''}
       <table class="imp-tabela">
         <thead><tr><td>
           <div style="height:${topo}mm"></div>
@@ -128,5 +146,5 @@
     if (img && !img.complete) img.onload = pronto; else setTimeout(pronto, 50);
   }
 
-  global.Exportar = { gerarDocx, baixar, imprimir };
+  global.Exportar = { gerarDocx, baixar, imprimir, timbreAtual };
 })(window);

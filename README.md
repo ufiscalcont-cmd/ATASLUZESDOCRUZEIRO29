@@ -10,7 +10,7 @@ Ferramenta para lavrar as atas (balaústres) da Loja direto no navegador. Você 
 - **IA que conhece o formato.** Ela separa Balaústre, Atos e Decretos, Expedientes, Propostas, Ordem do Dia, Tronco, Saudação e Palavra a Bem da Ordem (Sul, Norte e Oriente). Usa as abreviações com ∴ e não transcreve nada ritualístico, só registra que ocorreu "na forma ritualística". O que ela não entendeu aparece num quadro de "pontos para conferir".
 - **Revisar redação.** Um botão corrige ortografia e concordância sem mexer no conteúdo.
 - **Texto montado sozinho.** Data por extenso ("ao décimo sexto dia do mês de julho"), números com extenso ("07 (sete)"), ano da E∴ V∴ e da V∴ L∴, Síntese automática, horários, presença e assinaturas.
-- **Word (.docx) de verdade**, com o cabeçalho da Loja repetido em todas as páginas e numeração. O papel timbrado é opcional.
+- **Word (.docx) de verdade**, com o cabeçalho da Loja repetido em todas as páginas e numeração. Três opções de papel: sem timbre, timbre moderno ou o timbre clássico original.
 - **PDF/Impressão** no mesmo layout.
 - **Histórico** com busca, rascunho salvo automaticamente, opção de duplicar uma ata como base e numeração por grau que avança quando você finaliza a ata.
 - **Backup** em .json para levar tudo a outro computador.
@@ -47,7 +47,7 @@ js/app.js         lógica da tela, histórico, gravação
 lib/docx.iife.js  biblioteca docx 9.16 (MIT)
 lib/ffmpeg/       ffmpeg.wasm 0.12 (extração de áudio no navegador)
 js/conversor.js   extrai e comprime o áudio antes de enviar à IA
-assets/timbre.jpg papel timbrado
+assets/           timbres (moderno e clássico) e as logos das Lojas
 ```
 
 É um site estático, sem servidor e sem etapa de build. Para rodar no computador: `python3 -m http.server` na pasta e abra `http://localhost:8000`.

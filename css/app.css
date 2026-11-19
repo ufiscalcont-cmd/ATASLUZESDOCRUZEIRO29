@@ -114,10 +114,10 @@ label.chk.alto { margin-top: 24px; }
 .selo-status.final { background: #e7f6ee; color: var(--ok); }
 .folha { position: relative; background: #fff; box-shadow: 0 2px 20px rgba(0, 0, 0, .12); padding: 46px 50px 60px 64px; min-height: 900px;
   border-radius: 3px; overflow: hidden; }
-.folha.com-timbre { padding-top: 150px; }
 .folha-timbre { position: absolute; inset: 0; width: 100%; pointer-events: none; }
 .folha-cab, .imp-cab { text-align: center; font-family: var(--fonte-doc, Cambria, 'Times New Roman', serif); font-weight: 700; position: relative; }
 .folha-cab p, .imp-cab p { margin: 0; line-height: 1.25; }
+.folha-cab { font-size: var(--tam-cab, 12pt); margin-bottom: var(--depois-cab, 0); }
 .folha-texto { position: relative; font-family: var(--fonte-doc, Cambria, 'Times New Roman', serif); font-size: var(--tam-doc, 12pt); line-height: 1.5; }
 .folha-texto p { margin: 0 0 .7em; }
 .folha-texto .j { text-align: justify; }
@@ -165,6 +165,6 @@ label.chk.alto { margin-top: 24px; }
   .imp-timbre { position: fixed; top: 0; left: 0; width: 210mm; height: 297mm; z-index: -1; }
   .imp-tabela { width: 100%; border-collapse: collapse; }
   .imp-tabela td { padding: 0 20mm 0 30mm; }
-  .imp-cab { font-size: var(--tam-doc, 12pt); margin-bottom: 4mm; }
+  .imp-cab { font-size: var(--tam-cab, 12pt); margin-bottom: var(--depois-cab, 4mm); }
   .folha-texto p { orphans: 3; widows: 3; }
 }

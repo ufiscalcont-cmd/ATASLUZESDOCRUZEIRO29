@@ -25,7 +25,7 @@
     },
     oficiais: { vm: '', vig1: '', vig2: '', orador: '', secretario: '' },
     contadores: { APRENDIZ: 0, COMPANHEIRO: 0, MESTRE: 0 },
-    documento: { fonte: 'Cambria', tamanho: 12, timbre: false, paragrafoUnico: true },
+    documento: { fonte: 'Cambria', tamanho: 12, timbre: 'nenhum', paragrafoUnico: true },
     ia: { chave: '', modelo: 'gemini-flash-latest' },
   };
 

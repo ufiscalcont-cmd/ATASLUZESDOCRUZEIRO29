@@ -232,7 +232,7 @@
         <span class="selo-status" id="status-ata">rascunho</span>
       </div>
       <div class="folha" id="folha">
-        <img class="folha-timbre" src="assets/timbre.jpg" alt="" hidden>
+        <img class="folha-timbre" src="assets/timbre-moderno.jpg" alt="" hidden>
         <div class="folha-cab" id="folha-cab"></div>
         <div class="folha-texto" id="previa"></div>
       </div>
@@ -293,7 +293,13 @@
         </label>
         <label>Tamanho <input type="number" min="9" max="16" data-c="documento.tamanho"></label>
         <span></span>
-        <label class="chk"><input type="checkbox" data-c="documento.timbre"> Usar papel timbrado da Loja</label>
+        <label>Papel timbrado
+          <select data-c="documento.timbre">
+            <option value="nenhum">Sem timbre (como as atas atuais)</option>
+            <option value="moderno">Moderno</option>
+            <option value="classico">Clássico (timbre original)</option>
+          </select>
+        </label>
         <label class="chk"><input type="checkbox" data-c="documento.paragrafoUnico"> Corpo da ata em parágrafo único</label>
       </div>
 
