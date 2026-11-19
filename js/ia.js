@@ -181,32 +181,54 @@ Responda apenas com o JSON no esquema pedido.`;
     }
   }
 
-  const RESERVAS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest', 'gemini-2.5-flash'];
   const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
-  const temporario = (e) => [429, 500, 502, 503, 504].includes(e.status) || /high demand|overloaded|unavailable|Failed to fetch|NetworkError/i.test(e.message);
+  const temporario = (e) => [429, 500, 502, 503, 504].includes(e.status) || /high demand|overloaded|unavailable|sobrecarregados|Failed to fetch|NetworkError/i.test(e.message);
+  const indisponivel = (e) => e.status === 404 || /no longer available|not found|is not supported/i.test(e.message);
 
-  // Tenta de novo quando o Google está sobrecarregado e, se persistir, troca de modelo
+  // Ordena por versão (3.8 > 3.7 > 2.5); "flash" primeiro, depois "pro", depois "lite"
+  function versao(id) { const m = id.match(/gemini-(\d+)(?:\.(\d+))?/); return m ? (+m[1]) * 100 + (+(m[2] || 0)) : 0; }
+  function peso(id) { return /lite/.test(id) ? 2 : /pro/.test(id) ? 1 : 0; }
+
+  let reservasCache = null;
+  async function modelosReserva(chave, atual) {
+    if (!reservasCache) {
+      try {
+        const ms = (await listarModelos(chave)).map((m) => m.id)
+          .filter((id) => /flash|pro/.test(id) && !/(tts|image|audio|live|transcribe|omni|robotics|thinking-exp)/.test(id));
+        const maior = Math.max(0, ...ms.map(versao));
+        reservasCache = ms.filter((id) => !versao(id) || versao(id) >= Math.floor(maior / 100) * 100).sort((x, y) => peso(x) - peso(y) || versao(y) - versao(x) || /preview|exp/.test(x) - /preview|exp/.test(y));
+      } catch (_) { reservasCache = []; }
+      if (!reservasCache.length) reservasCache = ['gemini-flash-latest', 'gemini-pro-latest', 'gemini-flash-lite-latest'];
+    }
+    return reservasCache.filter((m) => m !== atual).slice(0, 4);
+  }
+
+  // Tenta de novo quando o Google está sobrecarregado e, se persistir, troca para outro modelo disponível na chave
   async function chamarResiliente(chave, modelo, partes, esquema, st = () => {}, temperatura) {
-    const modelos = [modelo, ...RESERVAS.filter((m) => m !== modelo)];
-    let ultimo;
-    for (const m of modelos) {
+    const fila = [modelo];
+    let ocupado = null, outro = null, buscouReservas = false;
+    for (let i = 0; i < fila.length; i++) {
+      const m = fila[i];
       for (let tentativa = 1; tentativa <= 3; tentativa++) {
         try {
-          if (m !== modelo || tentativa > 1) st(`Tentando de novo com ${m} (tentativa ${tentativa})…`, null);
+          if (i > 0 || tentativa > 1) st(`Tentando com ${m} (tentativa ${tentativa})…`, null);
           return await chamar(chave, m, partes, esquema, temperatura);
         } catch (e) {
-          ultimo = e;
-          if (e.status === 404) break; // modelo não existe: vai para o próximo
+          if (indisponivel(e)) { outro = outro || e; break; }
           if (!temporario(e)) throw e;
-          if (e.status === 429 && /quota|cota/i.test(e.message) && tentativa === 3) break;
+          ocupado = e;
           if (tentativa < 3) {
-            const seg = 8 * tentativa;
-            for (let t = seg; t > 0; t--) { st(`Google ocupado com ${m}. Nova tentativa em ${t}s…`, null); await esperar(1000); }
+            for (let t = 8 * tentativa; t > 0; t--) { st(`Google ocupado com ${m}. Nova tentativa em ${t}s…`, null); await esperar(1000); }
           }
         }
       }
+      if (!buscouReservas) { buscouReservas = true; fila.push(...(await modelosReserva(chave, modelo))); }
     }
-    throw ultimo;
+    if (ocupado) {
+      const e = new Error('Os servidores do Google estão sobrecarregados em todos os modelos disponíveis na sua chave. Aguarde alguns minutos e clique em "Gerar ata com IA" de novo (a ata não é perdida).');
+      e.status = 503; throw e;
+    }
+    throw outro || new Error('Nenhum modelo da IA respondeu.');
   }
 
   // Gera a ata a partir de áudio (File/Blob) ou texto
