@@ -185,6 +185,14 @@ Responda apenas com o JSON no esquema pedido.`;
     const st = onStatus || (() => {});
     const partes = [{ text: promptAta(contexto) }];
     let enviado = null;
+    if (audio && global.Conversor) {
+      try { audio = await global.Conversor.prepararAudio(audio, st); }
+      catch (e) {
+        if (/faixa de áudio/.test(e.message)) throw e;
+        console.warn('Conversão falhou, enviando o original', e);
+        st('Não consegui converter no navegador; enviando o arquivo original…', 0.05);
+      }
+    }
     if (audio) {
       const mime = mimeDe(audio);
       if (audio.size <= LIMITE_INLINE) {

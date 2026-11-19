@@ -6,7 +6,7 @@ Ferramenta para lavrar as atas (balaústres) da Loja direto no navegador. Você 
 
 ## O que ela faz
 
-- **Ata pelo áudio.** Aceita MP3, M4A, OGG/OPUS do WhatsApp, WAV, AAC e até vídeo MP4, com arquivos de até 2 GB. Também dá para gravar ali mesmo, no celular ou no notebook, ou colar uma transcrição pronta.
+- **Ata pelo áudio.** Aceita MP3, M4A, OGG/OPUS do WhatsApp, WAV, AAC e vídeos MP4/MOV. Antes de enviar, o próprio navegador extrai só o áudio e comprime (ffmpeg.wasm), então vídeos grandes do celular viram poucos MB. Também dá para gravar ali mesmo, no celular ou no notebook, ou colar uma transcrição pronta.
 - **IA que conhece o formato.** Ela separa Balaústre, Atos e Decretos, Expedientes, Propostas, Ordem do Dia, Tronco, Saudação e Palavra a Bem da Ordem (Sul, Norte e Oriente). Usa as abreviações com ∴ e não transcreve nada ritualístico, só registra que ocorreu "na forma ritualística". O que ela não entendeu aparece num quadro de "pontos para conferir".
 - **Revisar redação.** Um botão corrige ortografia e concordância sem mexer no conteúdo.
 - **Texto montado sozinho.** Data por extenso ("ao décimo sexto dia do mês de julho"), números com extenso ("07 (sete)"), ano da E∴ V∴ e da V∴ L∴, Síntese automática, horários, presença e assinaturas.
@@ -45,6 +45,8 @@ js/ia.js          integração com o Google Gemini
 js/export.js      Word (.docx) e PDF
 js/app.js         lógica da tela, histórico, gravação
 lib/docx.iife.js  biblioteca docx 9.16 (MIT)
+lib/ffmpeg/       ffmpeg.wasm 0.12 (extração de áudio no navegador)
+js/conversor.js   extrai e comprime o áudio antes de enviar à IA
 assets/timbre.jpg papel timbrado
 ```
 
