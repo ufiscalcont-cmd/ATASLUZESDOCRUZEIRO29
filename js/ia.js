@@ -227,5 +227,11 @@ ${JSON.stringify(campos, null, 2)}`;
     return chamar(chave, modelo, [{ text: prompt }], { type: 'OBJECT', properties: props }, 0.1);
   }
 
-  global.IA = { listarModelos, gerarAta, revisarTexto, CAMPOS_REVISAO, mimeDe };
+  async function testar(chave, modelo) {
+    const r = await chamar(chave, modelo, [{ text: 'Responda com {"ok":"sim"}' }], { type: 'OBJECT', properties: { ok: { type: 'STRING' } } }, 0);
+    if (!r || !r.ok) throw new Error('Resposta inesperada da IA.');
+    return true;
+  }
+
+  global.IA = { listarModelos, gerarAta, revisarTexto, testar, CAMPOS_REVISAO, mimeDe };
 })(window);

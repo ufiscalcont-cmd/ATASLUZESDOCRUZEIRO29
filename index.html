@@ -79,6 +79,7 @@
         <div class="progresso" id="progresso" hidden>
           <div class="barra"><span id="barra"></span></div>
           <p id="progresso-txt">…</p>
+          <button type="button" class="btn fantasma pequeno" id="btn-copiar-erro" hidden>Copiar mensagem de erro</button>
         </div>
         <div class="aviso-ia" id="obs-ia" hidden>
           <b>Pontos para conferir:</b>
@@ -232,7 +233,9 @@
         <span class="selo-status" id="status-ata">rascunho</span>
       </div>
       <div class="folha" id="folha">
-        <img class="folha-timbre" src="assets/timbre-moderno.jpg" alt="" hidden>
+        <div class="tb tb-topo" hidden><img alt=""></div>
+        <div class="tb tb-marca" hidden><img alt=""></div>
+        <div class="tb tb-base" hidden><img alt=""></div>
         <div class="folha-cab" id="folha-cab"></div>
         <div class="folha-texto" id="previa"></div>
       </div>
@@ -250,7 +253,7 @@
       <div class="grade g2">
         <label>Chave da API <input data-c="ia.chave" type="password" autocomplete="off" placeholder="AIza..."></label>
         <label>Modelo
-          <span class="combo"><input data-c="ia.modelo" list="lista-modelos"><button type="button" class="btn fantasma pequeno" id="btn-modelos">Buscar modelos</button></span>
+          <span class="combo"><input data-c="ia.modelo" list="lista-modelos"><button type="button" class="btn fantasma pequeno" id="btn-modelos">Buscar modelos</button><button type="button" class="btn fantasma pequeno" id="btn-testar-ia">Testar IA</button></span>
           <datalist id="lista-modelos"></datalist>
         </label>
       </div>

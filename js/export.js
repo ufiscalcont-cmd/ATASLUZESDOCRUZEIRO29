@@ -5,9 +5,9 @@
   // Papéis timbrados: imagem de página inteira + margens próprias (cm no Word, mm na impressão)
   const TIMBRES = {
     classico: { img: 'assets/timbre.jpg', cabTam: null,
-      docx: { top: 6.2, bottom: 3.2, header: 3.4, footer: 1.2 }, imp: { topo: 34, base: 30, depoisCab: 4 }, previa: { topo: '16%', base: '13%' } },
+      docx: { top: 6.2, bottom: 3.2, header: 3.4, footer: 1.2 }, imp: { topo: 34, base: 30, depoisCab: 4 }, previa: { topo: '21%', base: '16%', faixaTopo: 42, faixaBase: 27, marca: 'assets/marca-classico.png', opacidade: 1 } },
     moderno: { img: 'assets/timbre-moderno.jpg', cabTam: 11,
-      docx: { top: 4.9, bottom: 3.1, header: 1.05, footer: 1.9 }, imp: { topo: 10.5, base: 27, depoisCab: 9 }, previa: { topo: '5%', base: '14%' } },
+      docx: { top: 4.9, bottom: 3.1, header: 1.05, footer: 1.9 }, imp: { topo: 10.5, base: 27, depoisCab: 9 }, previa: { topo: '5%', base: '15%', faixaTopo: 45, faixaBase: 24, marca: 'assets/luzes.png', opacidade: 0.055 } },
   };
   function timbreAtual(cfg) {
     let t = cfg.documento.timbre;

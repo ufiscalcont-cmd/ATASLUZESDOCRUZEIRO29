@@ -80,9 +80,16 @@
     folha.style.paddingBottom = T ? T.previa.base : '';
     folha.style.setProperty('--tam-cab', T && T.cabTam ? `${T.cabTam}pt` : `${cfg.documento.tamanho}pt`);
     folha.style.setProperty('--depois-cab', T ? `${T.imp.depoisCab}mm` : '0');
-    const img = $('.folha-timbre');
-    img.hidden = !T;
-    if (T && !img.src.endsWith(T.img)) img.src = T.img;
+    const [topo, marca, base] = [$('.tb-topo'), $('.tb-marca'), $('.tb-base')];
+    [topo, marca, base].forEach((el) => { el.hidden = !T; });
+    if (T) {
+      const P = T.previa;
+      topo.style.aspectRatio = `210 / ${P.faixaTopo}`;
+      base.style.aspectRatio = `210 / ${P.faixaBase}`;
+      if (!topo.firstChild.src.endsWith(T.img)) { topo.firstChild.src = T.img; base.firstChild.src = T.img; }
+      if (!marca.firstChild.src.endsWith(P.marca)) marca.firstChild.src = P.marca;
+      marca.firstChild.style.opacity = P.opacidade;
+    }
     $('#folha-cab').innerHTML = est.cabecalho.map((l) => `<p>${Ata.esc(l)}</p>`).join('');
     $('#previa').innerHTML = Ata.paraHTML(est, cfg).replace(/_{3,}[^<]*?(?=<|$)/g, (m) => `<span class="vazio">${m}</span>`);
     const st = $('#status-ata');
@@ -234,8 +241,8 @@
   }
 
   function progresso(txt, frac) {
-    const p = $('#progresso'); p.hidden = false;
-    $('#progresso-txt').textContent = txt;
+    const p = $('#progresso'); p.hidden = false; p.classList.remove('erro'); $('#btn-copiar-erro').hidden = true;
+    $('#progresso-txt').textContent = txt; $('#progresso-txt').dataset.ultima = txt;
     const indet = frac == null || frac >= 0.5;
     p.classList.toggle('indeterminado', indet);
     if (!indet) $('#barra').style.width = Math.round(frac * 100) + '%';
@@ -293,8 +300,28 @@
       $('#progresso').classList.remove('indeterminado'); $('#barra').style.width = '100%';
       toast('Ata gerada. Revise e ajuste o que for preciso.');
     } catch (e) {
-      $('#progresso').hidden = true; toast(e.message, true); console.error(e);
+      mostrarErro(e);
     } finally { btn.disabled = false; }
+  }
+
+  function mostrarErro(e) {
+    console.error(e);
+    const p = $('#progresso'); p.hidden = false; p.classList.remove('indeterminado'); p.classList.add('erro');
+    const etapa = ($('#progresso-txt').dataset.ultima || '');
+    const msg = `Erro: ${e.message || e}${etapa ? `\n(etapa: ${etapa})` : ''}`;
+    $('#progresso-txt').textContent = msg;
+    $('#btn-copiar-erro').hidden = false;
+    $('#btn-copiar-erro').onclick = () => navigator.clipboard.writeText(msg).then(() => toast('Mensagem copiada.'));
+    toast('Não foi possível gerar a ata. Veja a mensagem em vermelho.', true);
+  }
+
+  async function testarIA() {
+    const chave = $('[data-c="ia.chave"]').value.trim(), modelo = $('[data-c="ia.modelo"]').value.trim() || 'gemini-flash-latest';
+    if (!chave) return toast('Informe a chave da API primeiro.', true);
+    const btn = $('#btn-testar-ia'); btn.disabled = true; btn.textContent = 'Testando…';
+    try { await IA.testar(chave, modelo); toast(`IA funcionando com o modelo ${modelo}.`); }
+    catch (e) { toast('Falhou: ' + e.message, true); }
+    finally { btn.disabled = false; btn.textContent = 'Testar IA'; }
   }
 
   async function revisarComIA() {
@@ -394,6 +421,7 @@
     $('#btn-config').onclick = abrirConfig;
     $('#dlg-config').addEventListener('close', () => { if ($('#dlg-config').returnValue === 'ok') salvarConfig(); });
     $('#btn-modelos').onclick = buscarModelos;
+    $('#btn-testar-ia').onclick = testarIA;
     $('#btn-exportar').onclick = exportarTudo;
     $('#arq-importar').onchange = importarTudo;
 

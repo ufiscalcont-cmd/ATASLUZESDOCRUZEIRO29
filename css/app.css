@@ -104,6 +104,9 @@ label.chk.alto { margin-top: 24px; }
 .progresso.indeterminado .barra span { width: 30% !important; animation: vai 1.3s infinite ease-in-out; }
 @keyframes vai { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 .progresso p { margin: 6px 0 0; font-size: 13px; color: var(--suave); }
+.progresso.erro .barra span { background: var(--perigo); width: 100% !important; animation: none; margin: 0; }
+.progresso.erro p { color: var(--perigo); font-weight: 500; white-space: pre-wrap; }
+#btn-copiar-erro { margin-top: 6px; }
 .aviso-ia { margin-top: 14px; background: #fff7e6; border: 1px solid #f5dfb0; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #6b4e0f; }
 .aviso-ia p { margin: 4px 0 0; white-space: pre-wrap; }
 
@@ -112,9 +115,14 @@ label.chk.alto { margin-top: 24px; }
 .selo-status { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 3px 10px; border-radius: 99px;
   background: #eef0f3; color: var(--suave); }
 .selo-status.final { background: #e7f6ee; color: var(--ok); }
-.folha { position: relative; background: #fff; box-shadow: 0 2px 20px rgba(0, 0, 0, .12); padding: 46px 50px 60px 64px; min-height: 900px;
-  border-radius: 3px; overflow: hidden; }
-.folha-timbre { position: absolute; inset: 0; width: 100%; pointer-events: none; }
+.folha { position: relative; background: #fff; box-shadow: 0 2px 20px rgba(0, 0, 0, .12); padding: 46px 50px 60px 64px; aspect-ratio: 210 / 297;
+  border-radius: 3px; }
+.tb { position: absolute; left: 0; right: 0; overflow: hidden; pointer-events: none; }
+.tb img { position: absolute; left: 0; width: 100%; }
+.tb-topo { top: 0; } .tb-topo img { top: 0; }
+.tb-base { bottom: 0; } .tb-base img { bottom: 0; }
+.tb-marca { top: 0; aspect-ratio: 210 / 297; display: grid; place-items: center; }
+.tb-marca img { position: static; width: 58%; }
 .folha-cab, .imp-cab { text-align: center; font-family: var(--fonte-doc, Cambria, 'Times New Roman', serif); font-weight: 700; position: relative; }
 .folha-cab p, .imp-cab p { margin: 0; line-height: 1.25; }
 .folha-cab { font-size: var(--tam-cab, 12pt); margin-bottom: var(--depois-cab, 0); }
