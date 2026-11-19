@@ -99,7 +99,7 @@
       data: { type: 'STRING', description: 'Data da sessão AAAA-MM-DD, se mencionada; senão vazio' },
       horaInicio: { type: 'STRING', description: 'HH:MM' },
       horaFim: { type: 'STRING', description: 'HH:MM' },
-      grau: { type: 'STRING', enum: ['APRENDIZ', 'COMPANHEIRO', 'MESTRE', ''] },
+      grau: { type: 'STRING', enum: ['APRENDIZ', 'COMPANHEIRO', 'MESTRE'] },
       tipo: S,
       presentesQuadro: { type: 'STRING', description: 'Número de irmãos do quadro presentes, só dígitos, ou vazio' },
       visitantesQtd: { type: 'STRING', description: 'Número de visitantes, só dígitos, ou vazio' },
