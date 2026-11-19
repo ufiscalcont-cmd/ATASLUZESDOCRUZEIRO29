@@ -23,7 +23,9 @@
     if (resp.status === 400 && /API key/i.test(msg)) msg = 'Chave de API inválida. Confira em Configurações.';
     if (resp.status === 404) msg += ' — o modelo escolhido pode não existir mais. Em Configurações, clique em "Buscar modelos".';
     if (resp.status === 429) msg = 'Limite de uso da API atingido (cota gratuita). Aguarde alguns minutos ou use uma chave com faturamento ativo. Detalhe: ' + msg;
-    return new Error(msg);
+    if (resp.status === 503 || /high demand|overloaded/i.test(msg)) msg = 'Os servidores do Google estão sobrecarregados agora. Tente de novo em alguns minutos. Detalhe: ' + msg;
+    const e = new Error(msg); e.status = resp.status;
+    return e;
   }
 
   async function listarModelos(chave) {
@@ -179,6 +181,34 @@ Responda apenas com o JSON no esquema pedido.`;
     }
   }
 
+  const RESERVAS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest', 'gemini-2.5-flash'];
+  const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+  const temporario = (e) => [429, 500, 502, 503, 504].includes(e.status) || /high demand|overloaded|unavailable|Failed to fetch|NetworkError/i.test(e.message);
+
+  // Tenta de novo quando o Google está sobrecarregado e, se persistir, troca de modelo
+  async function chamarResiliente(chave, modelo, partes, esquema, st = () => {}, temperatura) {
+    const modelos = [modelo, ...RESERVAS.filter((m) => m !== modelo)];
+    let ultimo;
+    for (const m of modelos) {
+      for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        try {
+          if (m !== modelo || tentativa > 1) st(`Tentando de novo com ${m} (tentativa ${tentativa})…`, null);
+          return await chamar(chave, m, partes, esquema, temperatura);
+        } catch (e) {
+          ultimo = e;
+          if (e.status === 404) break; // modelo não existe: vai para o próximo
+          if (!temporario(e)) throw e;
+          if (e.status === 429 && /quota|cota/i.test(e.message) && tentativa === 3) break;
+          if (tentativa < 3) {
+            const seg = 8 * tentativa;
+            for (let t = seg; t > 0; t--) { st(`Google ocupado com ${m}. Nova tentativa em ${t}s…`, null); await esperar(1000); }
+          }
+        }
+      }
+    }
+    throw ultimo;
+  }
+
   // Gera a ata a partir de áudio (File/Blob) ou texto
   async function gerarAta({ chave, modelo, audio, transcricao, contexto, onStatus }) {
     if (!chave) throw new Error('Cadastre sua chave da API do Google Gemini em Configurações.');
@@ -207,7 +237,7 @@ Responda apenas com o JSON no esquema pedido.`;
     if (transcricao) partes.push({ text: 'TRANSCRIÇÃO / ANOTAÇÕES DA SESSÃO:\n' + transcricao });
     st('A IA está ouvindo a sessão e redigindo a ata… (pode levar alguns minutos)', 0.5);
     try {
-      return await chamar(chave, modelo, partes, ESQUEMA_ATA);
+      return await chamarResiliente(chave, modelo, partes, ESQUEMA_ATA, st);
     } finally {
       if (enviado) apagarArquivo(chave, enviado.nome);
     }
@@ -224,7 +254,7 @@ Regras: mantenha exatamente os fatos, nomes, números, datas e a ordem das infor
 Devolva o JSON com as mesmas chaves.
 
 ${JSON.stringify(campos, null, 2)}`;
-    return chamar(chave, modelo, [{ text: prompt }], { type: 'OBJECT', properties: props }, 0.1);
+    return chamarResiliente(chave, modelo, [{ text: prompt }], { type: 'OBJECT', properties: props }, undefined, 0.1);
   }
 
   async function testar(chave, modelo) {
