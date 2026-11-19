@@ -166,9 +166,29 @@
         <label>Atos e decretos <small>(vazio = "Não houve.")</small>
           <textarea data-f="atos" rows="2"></textarea>
         </label>
+        <div class="pdfs" data-secao="atos">
+          <label class="soltar mini">
+            <input type="file" accept="application/pdf,.pdf,image/*" multiple hidden>
+            <span class="soltar-icone">📄</span>
+            <span><b>Importar PDFs de Atos e Decretos</b> · a IA lê e resume<br><small>Pranchas, editais, decretos… pode escolher vários (também aceita foto/scan)</small></span>
+          </label>
+          <ul class="lista-pdfs"></ul>
+          <button type="button" class="btn pequeno primario" data-resumir="atos" hidden>Ler PDFs e resumir com IA</button>
+          <p class="dica pdf-status" hidden></p>
+        </div>
         <label>Expedientes
           <textarea data-f="expedientes" rows="4" placeholder="Prancha 08/2025 da Loja ... informa que ...; Edital de iniciação da Loja ..."></textarea>
         </label>
+        <div class="pdfs" data-secao="expedientes">
+          <label class="soltar mini">
+            <input type="file" accept="application/pdf,.pdf,image/*" multiple hidden>
+            <span class="soltar-icone">📄</span>
+            <span><b>Importar PDFs de Expedientes</b> · a IA lê e resume<br><small>Pranchas, editais, decretos… pode escolher vários (também aceita foto/scan)</small></span>
+          </label>
+          <ul class="lista-pdfs"></ul>
+          <button type="button" class="btn pequeno primario" data-resumir="expedientes" hidden>Ler PDFs e resumir com IA</button>
+          <p class="dica pdf-status" hidden></p>
+        </div>
         <label>Propostas e informações
           <textarea data-f="propostas" rows="2"></textarea>
         </label>

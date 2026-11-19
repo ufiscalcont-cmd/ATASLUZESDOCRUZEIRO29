@@ -8,6 +8,7 @@ Ferramenta para lavrar as atas (balaústres) da Loja direto no navegador. Você 
 
 - **Ata pelo áudio.** Aceita MP3, M4A, OGG/OPUS do WhatsApp, WAV, AAC e vídeos MP4/MOV. Antes de enviar, o próprio navegador extrai só o áudio e comprime (ffmpeg.wasm), então vídeos grandes do celular viram poucos MB. Também dá para gravar ali mesmo, no celular ou no notebook, ou colar uma transcrição pronta.
 - **IA que conhece o formato.** Ela separa Balaústre, Atos e Decretos, Expedientes, Propostas, Ordem do Dia, Tronco, Saudação e Palavra a Bem da Ordem (Sul, Norte e Oriente). Usa as abreviações com ∴ e não transcreve nada ritualístico, só registra que ocorreu "na forma ritualística". O que ela não entendeu aparece num quadro de "pontos para conferir".
+- **Atos, Decretos e Expedientes por PDF.** Anexe as pranchas, editais e decretos (PDF ou foto) e a IA lê cada um e escreve o resumo no estilo da ata: número, Loja de origem e assunto.
 - **Revisar redação.** Um botão corrige ortografia e concordância sem mexer no conteúdo.
 - **Texto montado sozinho.** Data por extenso ("ao décimo sexto dia do mês de julho"), números com extenso ("07 (sete)"), ano da E∴ V∴ e da V∴ L∴, Síntese automática, horários, presença e assinaturas.
 - **Word (.docx) de verdade**, com o cabeçalho da Loja repetido em todas as páginas e numeração. Três opções de papel: sem timbre, timbre moderno ou o timbre clássico original.

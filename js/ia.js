@@ -285,5 +285,56 @@ ${JSON.stringify(campos, null, 2)}`;
     return true;
   }
 
-  global.IA = { listarModelos, gerarAta, revisarTexto, testar, CAMPOS_REVISAO, mimeDe };
+  // Lê PDFs (pranchas, editais, decretos) e devolve o resumo no estilo da ata
+  async function resumirDocumentos({ chave, modelo, arquivos, secao, contexto, onStatus }) {
+    if (!chave) throw new Error('Cadastre sua chave da API do Google Gemini em Configurações.');
+    const st = onStatus || (() => {});
+    const partes = [];
+    const enviados = [];
+    let inline = 0;
+    try {
+      for (let i = 0; i < arquivos.length; i++) {
+        const f = arquivos[i];
+        const mime = /\.pdf$/i.test(f.name) ? 'application/pdf' : (f.type || 'application/pdf');
+        st(`Preparando ${i + 1} de ${arquivos.length}: ${f.name}`);
+        partes.push({ text: `DOCUMENTO ${i + 1} — arquivo "${f.name}":` });
+        if (inline + f.size <= 12 * 1024 * 1024) {
+          inline += f.size;
+          partes.push({ inlineData: { mimeType: mime, data: await base64(f) } });
+        } else {
+          const up = await enviarArquivoGrande(chave, f, mime, (p) => st(`Enviando ${f.name}… ${Math.round(p * 100)}%`));
+          enviados.push(up.nome);
+          partes.push({ fileData: up.fileData });
+        }
+      }
+      const atos = secao === 'atos';
+      const prompt = `Você é o Secretário da Loja Maçônica ${contexto.loja.nome} nº ${contexto.loja.numero} e precisa registrar na ata, na seção ${atos ? '"ATOS E DECRETOS"' : '"EXPEDIENTES"'}, os ${arquivos.length} documento(s) anexado(s).
+
+Para CADA documento, escreva um item curto (uma frase) com: tipo e número do documento (Prancha, Edital, Decreto, Ato, Circular, Convite...), quem enviou (Loja e número, Grande Loja, Grão-Mestrado, órgão) e o assunto resumido com o essencial (datas, horários, nomes de profanos/irmãos, eventos).
+${atos ? 'Atos e Decretos normalmente vêm da Grande Loja/Grão-Mestrado (ex.: "Prancha GSRE nº 006 - 2024/2026", decretos, atos de nomeação).' : 'Expedientes são correspondências recebidas: pranchas de outras Lojas, editais de iniciação/regularização, convites para sessões, circulares.'}
+
+Regras:
+- Use as abreviações maçônicas com ∴ quando couber (Ir∴, IIr∴, Loja Maç∴, Ap∴ M∴, Sessão Magna...).
+- Não invente: se o número ou a data não estiverem legíveis, omita.
+- Agrupe documentos iguais da mesma Loja quando fizer sentido (ex.: "Pranchas 04 e 05/2025 da Loja ...").
+- "texto": todos os itens numa linha corrida, separados por ponto e vírgula, terminando com ponto final, prontos para colar na ata.
+
+Exemplo de estilo: Pranchas 04 e 05/2025 da Loja Maçônica Harmonia e Concórdia nº 28, sobre a nomeação do primeiro e segundo vigilantes; Edital de iniciação da Loja Cavaleiros da Luz nº 25 do profano Jonas Felipe de Sousa; Prancha Circular nº 16/2025 da Loja Maçônica Acácia Sergipense nº 17, informando a suspensão dos trabalhos no dia 13/08.`;
+      st('A IA está lendo os documentos…');
+      const esquema = {
+        type: 'OBJECT',
+        properties: {
+          itens: { type: 'ARRAY', items: { type: 'STRING' } },
+          texto: { type: 'STRING' },
+          observacoes: { type: 'STRING', description: 'Documentos ilegíveis ou dúvidas para o Secretário conferir' },
+        },
+        required: ['texto'],
+      };
+      return await chamarResiliente(chave, modelo, [{ text: prompt }, ...partes], esquema, (t) => st(t), 0.2);
+    } finally {
+      enviados.forEach((n) => apagarArquivo(chave, n));
+    }
+  }
+
+  global.IA = { listarModelos, gerarAta, revisarTexto, testar, resumirDocumentos, CAMPOS_REVISAO, mimeDe };
 })(window);

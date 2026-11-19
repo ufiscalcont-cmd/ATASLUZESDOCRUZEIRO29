@@ -65,6 +65,7 @@
       const prox = (Number(cfg.contadores[v]) || 0) + 1;
       ata.numero = prox; $('[data-f="numero"]').value = prox;
     }
+    if ((el.dataset.f === 'atos' || el.dataset.f === 'expedientes') && !String(v).trim() && ata.pdfResumido) delete ata.pdfResumido[el.dataset.f];
     atualizarCondicionais(); atualizarPrevia();
     clearTimeout(tSalvar); tSalvar = setTimeout(() => gravar('atas.rascunho.v1', ata), 400);
   }
@@ -156,7 +157,7 @@
       const nova = Ata.novaAta(cfg);
       ata = mesclar(nova, { ...base, id: nova.id, status: 'rascunho', criadoEm: nova.criadoEm, numero: (Number(cfg.contadores[base.grau]) || 0) + 1,
         data: nova.data, dataLavratura: nova.dataLavratura, ordemDoDia: '', expedientes: '', palavra: { sul: '', norte: '', oriente: '' },
-        atos: '', propostas: '', saudacao: '', visitantesNomes: '', visitantesQtd: '', sinteseManual: '', observacoesIA: '' });
+        atos: '', pdfResumido: {}, propostas: '', saudacao: '', visitantesNomes: '', visitantesQtd: '', sinteseManual: '', observacoesIA: '' });
       limparIA(); preencherForm(); $('#dlg-historico').close(); toast('Cópia criada com os mesmos oficiais e tipo de sessão.');
     } else if (b.dataset.excluir) {
       if (!confirm('Excluir esta ata definitivamente?')) return;
@@ -270,7 +271,7 @@
     if (r.balaustreModo) set('balaustre.modo', r.balaustreModo);
     if (/^\d{4}-\d{2}-\d{2}$/.test(r.balaustreData || '')) set('balaustre.data', r.balaustreData);
     set('balaustre.texto', r.balaustreTexto);
-    ['atos', 'expedientes', 'propostas', 'ordemDoDia', 'saudacao'].forEach((k) => set(k, r[k]));
+    ['atos', 'expedientes', 'propostas', 'ordemDoDia', 'saudacao'].forEach((k) => { if (!(ata.pdfResumido || {})[k]) set(k, r[k]); });
     if (typeof r.troncoHouve === 'boolean') ata.tronco.houve = r.troncoHouve;
     if (r.troncoValor) set('tronco.valor', String(r.troncoValor).replace(/\D/g, ''));
     set('palavra.sul', r.palavraSul); set('palavra.norte', r.palavraNorte); set('palavra.oriente', r.palavraOriente);
@@ -340,6 +341,52 @@
       salvar(true); preencherForm(); toast('Redação revisada.');
     } catch (e) { toast(e.message, true); }
     finally { btn.disabled = false; $('#progresso').hidden = true; }
+  }
+
+  // ---------- PDFs de Atos e Decretos / Expedientes ----------
+  const pdfs = { atos: [], expedientes: [] };
+
+  function desenharPdfs(secao) {
+    const box = $(`.pdfs[data-secao="${secao}"]`);
+    box.querySelector('.lista-pdfs').innerHTML = pdfs[secao].map((f, i) =>
+      `<li><span title="${Ata.esc(f.name)}">📄 ${Ata.esc(f.name)}</span><button type="button" data-tirar="${i}" title="Remover">×</button></li>`).join('');
+    const btn = box.querySelector('[data-resumir]');
+    btn.hidden = !pdfs[secao].length;
+    btn.textContent = pdfs[secao].length > 1 ? `Ler ${pdfs[secao].length} documentos e resumir com IA` : 'Ler documento e resumir com IA';
+  }
+
+  function adicionarPdfs(secao, lista) {
+    const novos = [...lista].filter((f) => /pdf|image\//i.test(f.type) || /\.(pdf|jpe?g|png|webp|heic)$/i.test(f.name));
+    if (!novos.length) return toast('Escolha arquivos PDF (ou fotos dos documentos).', true);
+    pdfs[secao].push(...novos);
+    desenharPdfs(secao);
+  }
+
+  async function resumirPdfs(secao) {
+    if (!pdfs[secao].length) return;
+    if (!cfg.ia.chave) { toast('Cadastre a chave da API do Gemini.', true); return abrirConfig(); }
+    const box = $(`.pdfs[data-secao="${secao}"]`);
+    const btn = box.querySelector('[data-resumir]'), status = box.querySelector('.pdf-status');
+    const st = (t) => { status.hidden = false; status.classList.remove('erro'); status.textContent = t; };
+    btn.disabled = true;
+    try {
+      const r = await IA.resumirDocumentos({ chave: cfg.ia.chave, modelo: cfg.ia.modelo || 'gemini-flash-latest', arquivos: pdfs[secao], secao, contexto: { loja: cfg.loja }, onStatus: st });
+      let texto = (r.texto || (r.itens || []).join('; ')).trim();
+      if (!texto) throw new Error('A IA não conseguiu extrair conteúdo dos documentos.');
+      if (!/[.!?]$/.test(texto)) texto += '.';
+      const atual = (ata[secao] || '').trim();
+      if (atual && !confirm(`Já existe texto em ${secao === 'atos' ? 'Atos e Decretos' : 'Expedientes'}.\n\nOK = SUBSTITUIR pelo resumo dos PDFs\nCancelar = ACRESCENTAR ao final`)) {
+        texto = atual.replace(/\.\s*$/, '') + '; ' + texto;
+      }
+      ata[secao] = texto;
+      ata.pdfResumido = { ...(ata.pdfResumido || {}), [secao]: true };
+      salvar(true); preencherForm();
+      st(`Pronto: ${pdfs[secao].length} documento(s) resumido(s).` + (r.observacoes ? ` Conferir: ${r.observacoes}` : ''));
+      pdfs[secao] = []; desenharPdfs(secao);
+      toast('Resumo inserido na ata. Revise o texto.');
+    } catch (e) {
+      status.hidden = false; status.classList.add('erro'); status.textContent = 'Erro: ' + e.message; console.error(e);
+    } finally { btn.disabled = false; }
   }
 
   // ---------- gravação ----------
@@ -441,6 +488,15 @@
     ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('arrastando'); }));
     ['dragleave', 'drop'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('arrastando'); }));
     zona.addEventListener('drop', (e) => escolherAudio(e.dataTransfer.files[0]));
+    $$('.pdfs').forEach((box) => {
+      const secao = box.dataset.secao, zona = box.querySelector('.soltar'), inp = box.querySelector('input[type=file]');
+      inp.onchange = (e) => { adicionarPdfs(secao, e.target.files); e.target.value = ''; };
+      ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('arrastando'); }));
+      ['dragleave', 'drop'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('arrastando'); }));
+      zona.addEventListener('drop', (e) => adicionarPdfs(secao, e.dataTransfer.files));
+      box.querySelector('.lista-pdfs').onclick = (e) => { const b = e.target.closest('[data-tirar]'); if (b) { pdfs[secao].splice(+b.dataset.tirar, 1); desenharPdfs(secao); } };
+      box.querySelector('[data-resumir]').onclick = () => resumirPdfs(secao);
+    });
     $('#btn-gerar-ia').onclick = gerarComIA;
     $('#btn-revisar-ia').onclick = revisarComIA;
     $('#btn-gravar').onclick = alternarGravacao;
