@@ -187,3 +187,13 @@ label.chk.alto { margin-top: 24px; }
 .lista-pdfs li button { border: 0; background: #d9e1ec; color: var(--azul); width: 20px; height: 20px; border-radius: 50%; cursor: pointer; line-height: 1; }
 .pdf-status { margin: 6px 0 0; }
 .pdf-status.erro { color: var(--perigo); }
+
+/* Google Drive */
+.ponto-drive { width: 9px; height: 9px; border-radius: 50%; background: #8a94a6; display: inline-block; }
+#btn-drive.on .ponto-drive { background: #3ccf7e; box-shadow: 0 0 0 3px rgba(60, 207, 126, .25); }
+.status-drive { align-self: center; font-size: 12.5px; color: var(--suave); margin-left: auto; }
+.status-drive.ok { color: var(--ok); }
+.status-drive.erro { color: var(--perigo); }
+.hist-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.lista-hist .tag { display: inline-block; font-size: 11px; background: #e7f6ee; color: var(--ok); border-radius: 99px; padding: 1px 8px; margin-left: 6px; font-weight: 600; }
+.lista-hist .carregando { color: var(--suave); justify-content: center; }

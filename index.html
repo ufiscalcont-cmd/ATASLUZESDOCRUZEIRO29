@@ -22,6 +22,7 @@
     </div>
     <nav class="acoes-topo">
       <button class="btn fantasma" id="btn-nova">+ Nova ata</button>
+      <button class="btn fantasma" id="btn-drive" title="Salvar e abrir as atas no seu Google Drive"><span class="ponto-drive"></span><span id="txt-drive">Google Drive</span></button>
       <button class="btn fantasma" id="btn-historico">Histórico</button>
       <button class="btn fantasma" id="btn-config">Configurações</button>
     </nav>
@@ -244,6 +245,7 @@
         <button class="btn" id="btn-pdf">PDF / Imprimir</button>
         <button class="btn fantasma" id="btn-copiar">Copiar texto</button>
         <button class="btn fantasma" id="btn-finalizar" title="Marca como definitiva e atualiza a numeração do grau">Finalizar ata</button>
+        <span class="status-drive" id="status-drive"></span>
       </div>
     </section>
 
@@ -326,6 +328,17 @@
         <label class="chk"><input type="checkbox" data-c="documento.paragrafoUnico"> Corpo da ata em parágrafo único</label>
       </div>
 
+      <h3>Google Drive</h3>
+      <p class="dica">Com o Drive conectado, cada ata salva vai para a pasta <b>"Atas - Loja Maçônica …"</b> no seu Google Drive e aparece no Histórico em qualquer computador ou celular. O sistema só enxerga os arquivos que ele mesmo criou no seu Drive.</p>
+      <label>ID do cliente OAuth do Google <small>(termina em .apps.googleusercontent.com — veja o passo a passo no README)</small>
+        <input data-c="drive.clientId" placeholder="123456789-abc....apps.googleusercontent.com">
+      </label>
+      <label class="chk"><input type="checkbox" data-c="drive.salvarDocumentos"> Ao baixar o Word, guardar uma cópia do .docx no Drive</label>
+      <label class="chk"><input type="checkbox" data-c="drive.salvarConfig"> Guardar estas configurações no Drive (oficiais, numeração e chave da IA), para não precisar cadastrar em cada aparelho</label>
+      <div class="linha-acoes">
+        <button type="button" class="btn fantasma" id="btn-drive-sair" hidden>Desconectar do Drive</button>
+      </div>
+
       <h3>Backup</h3>
       <div class="linha-acoes">
         <button type="button" class="btn fantasma" id="btn-exportar">Exportar tudo (.json)</button>
@@ -342,6 +355,14 @@
   <form method="dialog">
     <header><h2>Atas salvas</h2><button class="x" value="cancel" aria-label="Fechar">×</button></header>
     <div class="dlg-corpo">
+      <div class="abas" role="tablist">
+        <button type="button" class="aba ativa" data-hist="drive">☁ Google Drive</button>
+        <button type="button" class="aba" data-hist="local">Neste aparelho</button>
+      </div>
+      <div class="hist-acoes" id="hist-acoes-drive">
+        <a class="btn fantasma pequeno" id="link-pasta" target="_blank" rel="noopener" hidden>Abrir pasta no Drive ↗</a>
+        <button type="button" class="btn fantasma pequeno" id="btn-enviar-locais" hidden>Enviar atas deste aparelho para o Drive</button>
+      </div>
       <input id="busca-hist" type="search" placeholder="Buscar por número, data ou assunto…">
       <ul class="lista-hist" id="lista-hist"></ul>
     </div>
@@ -358,6 +379,7 @@
 <script src="js/conversor.js"></script>
 <script src="js/ia.js"></script>
 <script src="js/export.js"></script>
+<script src="js/drive.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

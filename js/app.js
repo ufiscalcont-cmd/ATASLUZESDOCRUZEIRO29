@@ -100,12 +100,83 @@
   }
 
   // ---------- salvar / histórico ----------
+  function salvarLocal(a = ata) {
+    const i = atas.findIndex((x) => x.id === a.id);
+    if (i >= 0) atas[i] = structuredClone(a); else atas.unshift(structuredClone(a));
+    gravar(CH_ATAS, atas);
+    if (a === ata) { gravar(CH_ATUAL, ata.id); localStorage.removeItem('atas.rascunho.v1'); }
+  }
+
   function salvar(silencioso = false) {
     ata.atualizadoEm = new Date().toISOString();
-    const i = atas.findIndex((a) => a.id === ata.id);
-    if (i >= 0) atas[i] = structuredClone(ata); else atas.unshift(structuredClone(ata));
-    gravar(CH_ATAS, atas); gravar(CH_ATUAL, ata.id); localStorage.removeItem('atas.rascunho.v1');
-    if (!silencioso) toast('Ata salva neste navegador.');
+    salvarLocal();
+    if (Drive.estado().conectado) salvarNoDrive(ata, silencioso);
+    else if (!silencioso) toast(Drive.estado().configurado ? 'Ata salva neste aparelho. Conecte o Google Drive para guardar na nuvem.' : 'Ata salva neste navegador.');
+  }
+
+  // ---------- Google Drive ----------
+  let filaDrive = Promise.resolve();
+  const horaAgora = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  function statusDrive(txt, tipo = '') { const el = $('#status-drive'); el.textContent = txt; el.className = 'status-drive ' + tipo; }
+
+  function salvarNoDrive(a, silencioso = true) {
+    const copia = structuredClone(a);
+    filaDrive = filaDrive.then(async () => {
+      statusDrive('Salvando no Drive…');
+      try {
+        const r = await Drive.salvarAta(copia, Ata.montar(copia, cfg).nomeArquivo);
+        const alvo = atas.find((x) => x.id === copia.id);
+        if (alvo) { alvo.driveId = r.id; gravar(CH_ATAS, atas); }
+        if (ata.id === copia.id) ata.driveId = r.id;
+        statusDrive(`☁ Salvo no Drive às ${horaAgora()}`, 'ok');
+        if (!silencioso) toast('Ata salva no Google Drive.');
+      } catch (e) {
+        statusDrive('⚠ Não salvou no Drive', 'erro');
+        toast(e.message, true); console.error(e);
+      }
+    });
+    return filaDrive;
+  }
+
+  function atualizarBotaoDrive(st = Drive.estado()) {
+    const b = $('#btn-drive');
+    b.classList.toggle('on', st.conectado);
+    $('#txt-drive').textContent = st.conectado ? (st.email ? st.email.split('@')[0] : 'Drive conectado') : 'Conectar Drive';
+    b.title = st.conectado ? `Conectado ao Google Drive (${st.email}). Clique para ver as atas do Drive.` : 'Entrar com a conta Google e salvar as atas no Drive';
+    $('#btn-drive-sair').hidden = !st.conectado;
+    if (!st.conectado && localStorage.getItem('atas.drive.lembrar')) statusDrive('Drive desconectado — clique em "Conectar Drive"');
+  }
+
+  async function conectarDrive() {
+    if (!cfg.drive.clientId) { toast('Primeiro informe o ID do cliente do Google em Configurações → Google Drive.', true); return abrirConfig(); }
+    const pedido = Drive.garantirToken(); // precisa sair antes de qualquer await (pop-up)
+    try {
+      await pedido;
+      statusDrive('Conectado ao Drive. Sincronizando…');
+      await sincronizarConfig();
+      const soLocais = atas.filter((a) => !a.driveId);
+      if (soLocais.length && confirm(`Conectado ao Google Drive.\n\nHá ${soLocais.length} ata(s) salva(s) só neste aparelho. Enviar para o Drive agora?`)) {
+        for (const a of soLocais) await salvarNoDrive(a);
+      }
+      if (atas.some((a) => a.id === ata.id)) await salvarNoDrive(ata);
+      statusDrive(`☁ Drive conectado`, 'ok');
+      toast('Google Drive conectado. As atas salvas vão para a pasta da Loja no seu Drive.');
+    } catch (e) { toast(e.message, true); statusDrive('⚠ Drive não conectado', 'erro'); }
+  }
+
+  async function sincronizarConfig() {
+    if (!cfg.drive.salvarConfig) return;
+    try {
+      const remota = await Drive.lerConfig();
+      const localVazia = !cfg.oficiais.vm && !cfg.oficiais.secretario && !cfg.ia.chave;
+      if (remota && (localVazia || confirm('Encontrei configurações salvas no seu Drive (oficiais, numeração, chave da IA).\n\nOK = usar as do Drive\nCancelar = manter as deste aparelho e atualizar o Drive'))) {
+        const clientId = cfg.drive.clientId;
+        cfg = mesclar(Ata.CONFIG_PADRAO, remota); cfg.drive.clientId = clientId;
+        gravar(CH_CFG, cfg); preencherForm();
+      } else {
+        await Drive.salvarConfig(cfg);
+      }
+    } catch (e) { console.warn('config Drive', e); }
   }
 
   function novaAta() {
@@ -121,32 +192,105 @@
     if (!confirm(`Finalizar a sessão de ${ata.grau.toLowerCase()} nº ${ata.numero}? A numeração do grau passa a contar a partir dela.`)) return;
     ata.status = 'final';
     const n = Number(ata.numero) || 0;
-    if (n > (Number(cfg.contadores[ata.grau]) || 0)) { cfg.contadores[ata.grau] = n; gravar(CH_CFG, cfg); }
+    if (n > (Number(cfg.contadores[ata.grau]) || 0)) { cfg.contadores[ata.grau] = n; gravar(CH_CFG, cfg); if (Drive.estado().conectado && cfg.drive.salvarConfig) Drive.salvarConfig(cfg).catch(() => {}); }
     salvar(true); atualizarPrevia(); toast('Ata finalizada e numeração atualizada.');
   }
 
-  function desenharHistorico() {
+  let abaHist = 'drive';
+  let cacheDrive = null;
+
+  function itemHist({ id, titulo, sub, local, drive }) {
+    return `
+      <li>
+        <div class="info"><b>${titulo}</b><span>${sub}</span></div>
+        <div class="acoes">
+          ${drive ? `<button type="button" class="btn pequeno" data-abrir-drive="${drive}">Abrir</button>
+                     <button type="button" class="btn fantasma pequeno" data-lixeira="${drive}" title="Mover para a lixeira do Drive">🗑</button>`
+    : `<button type="button" class="btn pequeno" data-abrir="${id}">Abrir</button>
+                     <button type="button" class="btn fantasma pequeno" data-duplicar="${id}" title="Usar como base para uma nova ata">Duplicar</button>
+                     <button type="button" class="btn fantasma pequeno" data-excluir="${id}" title="Excluir deste aparelho">🗑</button>`}
+        </div>
+      </li>`;
+  }
+
+  async function desenharHistorico(recarregar = false) {
+    $$('[data-hist]').forEach((b) => b.classList.toggle('ativa', b.dataset.hist === abaHist));
+    const st = Drive.estado();
+    $('#hist-acoes-drive').hidden = abaHist !== 'drive';
+    if (abaHist === 'drive') return desenharHistoricoDrive(recarregar);
+    return desenharHistoricoLocal();
+  }
+
+  async function desenharHistoricoDrive(recarregar) {
+    const ul = $('#lista-hist'), st = Drive.estado();
+    if (!st.configurado || !st.conectado) {
+      ul.innerHTML = `<li class="vazia">${st.configurado ? 'Conecte o Google Drive para ver as atas guardadas na nuvem.' : 'O Google Drive ainda não foi configurado (Configurações → Google Drive).'}
+        <button type="button" class="btn pequeno primario" data-conectar>${st.configurado ? 'Conectar Drive' : 'Abrir Configurações'}</button></li>`;
+      $('#link-pasta').hidden = true; $('#btn-enviar-locais').hidden = true;
+      return;
+    }
+    if (!cacheDrive || recarregar) {
+      ul.innerHTML = '<li class="carregando">Carregando as atas do Drive…</li>';
+      try { cacheDrive = await Drive.listarAtas(); } catch (e) { ul.innerHTML = `<li class="vazia">${Ata.esc(e.message)}</li>`; return; }
+      Drive.linkPasta().then((u) => { $('#link-pasta').href = u; $('#link-pasta').hidden = false; }).catch(() => {});
+    }
+    const semDrive = atas.filter((a) => !a.driveId).length;
+    $('#btn-enviar-locais').hidden = !semDrive;
+    $('#btn-enviar-locais').textContent = `Enviar ${semDrive} ata(s) deste aparelho para o Drive`;
+    const termo = $('#busca-hist').value.toLowerCase().trim();
+    const lista = cacheDrive.filter((f) => !termo || f.name.toLowerCase().includes(termo));
+    if (!lista.length) { ul.innerHTML = `<li class="vazia">${termo ? 'Nada encontrado.' : 'Nenhuma ata no Drive ainda. Salve uma ata para ela aparecer aqui.'}</li>`; return; }
+    ul.innerHTML = lista.map((f) => {
+      const loc = atas.find((a) => a.id === f.appProperties?.ataId);
+      return itemHist({
+        drive: f.id,
+        titulo: Ata.esc(f.name.replace(/\.json$/i, '')) + (loc ? '<span class="tag">também neste aparelho</span>' : ''),
+        sub: `Alterada em ${new Date(f.modifiedTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${loc ? ' · ' + (loc.status === 'final' ? 'finalizada' : 'rascunho') : ''}`,
+      });
+    }).join('');
+  }
+
+  function desenharHistoricoLocal() {
+    $('#btn-enviar-locais').hidden = true;
     const termo = $('#busca-hist').value.toLowerCase().trim();
     const ul = $('#lista-hist');
     const lista = atas.filter((a) => !termo || JSON.stringify(a).toLowerCase().includes(termo))
       .sort((a, b) => String(b.data).localeCompare(String(a.data)));
     if (!lista.length) { ul.innerHTML = '<li class="vazia">Nenhuma ata salva ainda.</li>'; return; }
-    ul.innerHTML = lista.map((a) => `
-      <li>
-        <div class="info">
-          <b>Sessão ${Ata.esc(a.tipo || '').toLowerCase()} de ${Ata.esc((a.grau || '').toLowerCase())} nº ${Ata.esc(a.numero)}</b>
-          <span>${Extenso.dataCurta(a.data)} · ${a.status === 'final' ? 'finalizada' : 'rascunho'} · ${Ata.esc((a.ordemDoDia || '').slice(0, 70))}${(a.ordemDoDia || '').length > 70 ? '…' : ''}</span>
-        </div>
-        <div class="acoes">
-          <button type="button" class="btn pequeno" data-abrir="${a.id}">Abrir</button>
-          <button type="button" class="btn fantasma pequeno" data-duplicar="${a.id}" title="Usar como base para uma nova ata">Duplicar</button>
-          <button type="button" class="btn fantasma pequeno" data-excluir="${a.id}" title="Excluir">🗑</button>
-        </div>
-      </li>`).join('');
+    ul.innerHTML = lista.map((a) => itemHist({
+      id: a.id,
+      titulo: `Sessão ${Ata.esc(a.tipo || '').toLowerCase()} de ${Ata.esc((a.grau || '').toLowerCase())} nº ${Ata.esc(a.numero)}${a.driveId ? '<span class="tag">☁ no Drive</span>' : ''}`,
+      sub: `${Extenso.dataCurta(a.data)} · ${a.status === 'final' ? 'finalizada' : 'rascunho'} · ${Ata.esc((a.ordemDoDia || '').slice(0, 70))}${(a.ordemDoDia || '').length > 70 ? '…' : ''}`,
+    })).join('');
   }
 
-  function acaoHistorico(e) {
+  async function acaoHistorico(e) {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.hasAttribute('data-conectar')) {
+      if (!Drive.estado().configurado) { $('#dlg-historico').close(); return abrirConfig(); }
+      await conectarDrive(); return desenharHistorico(true);
+    }
+    if (b.dataset.abrirDrive) {
+      b.disabled = true; b.textContent = 'Abrindo…';
+      try {
+        const remota = await Drive.abrirAta(b.dataset.abrirDrive);
+        salvar(true);
+        ata = mesclar(Ata.novaAta(cfg), remota);
+        salvarLocal(); limparIA(); preencherForm(); $('#dlg-historico').close();
+        statusDrive(`☁ Aberta do Drive às ${horaAgora()}`, 'ok'); toast('Ata aberta do Google Drive.');
+      } catch (err) { toast(err.message, true); b.disabled = false; b.textContent = 'Abrir'; }
+      return;
+    }
+    if (b.dataset.lixeira) {
+      if (!confirm('Mover esta ata para a lixeira do Google Drive? (dá para recuperar pela lixeira do Drive por 30 dias)')) return;
+      try {
+        await Drive.lixeira(b.dataset.lixeira);
+        atas.forEach((a) => { if (a.driveId === b.dataset.lixeira) delete a.driveId; });
+        if (ata.driveId === b.dataset.lixeira) delete ata.driveId;
+        gravar(CH_ATAS, atas); desenharHistorico(true);
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
     if (b.dataset.abrir) {
       salvar(true);
       ata = mesclar(Ata.novaAta(cfg), atas.find((a) => a.id === b.dataset.abrir));
@@ -155,7 +299,7 @@
       salvar(true);
       const base = structuredClone(atas.find((a) => a.id === b.dataset.duplicar));
       const nova = Ata.novaAta(cfg);
-      ata = mesclar(nova, { ...base, id: nova.id, status: 'rascunho', criadoEm: nova.criadoEm, numero: (Number(cfg.contadores[base.grau]) || 0) + 1,
+      ata = mesclar(nova, { ...base, id: nova.id, driveId: undefined, status: 'rascunho', criadoEm: nova.criadoEm, numero: (Number(cfg.contadores[base.grau]) || 0) + 1,
         data: nova.data, dataLavratura: nova.dataLavratura, ordemDoDia: '', expedientes: '', palavra: { sul: '', norte: '', oriente: '' },
         atos: '', pdfResumido: {}, propostas: '', saudacao: '', visitantesNomes: '', visitantesQtd: '', sinteseManual: '', observacoesIA: '' });
       limparIA(); preencherForm(); $('#dlg-historico').close(); toast('Cópia criada com os mesmos oficiais e tipo de sessão.');
@@ -187,6 +331,8 @@
       if (!ata.oficiais[k] || ata.oficiais[k] === antigos[k]) ata.oficiais[k] = cfg.oficiais[k];
     }
     if (ata.status !== 'final' && !atas.some((a) => a.id === ata.id)) ata.numero = (Number(cfg.contadores[ata.grau]) || 0) + 1;
+    Drive.configurar(cfg.drive.clientId, nomePastaDrive());
+    if (Drive.estado().conectado && cfg.drive.salvarConfig) Drive.salvarConfig(cfg).catch((e) => toast(e.message, true));
     preencherForm(); toast('Configurações salvas.');
   }
 
@@ -446,6 +592,12 @@
       const blob = await Exportar.gerarDocx(est, cfg);
       Exportar.baixar(blob, est.nomeArquivo + '.docx');
       salvar(true);
+      if (Drive.estado().conectado && cfg.drive.salvarDocumentos) {
+        filaDrive = filaDrive.then(() => Drive.salvarDocumento(blob, est.nomeArquivo + '.docx',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ata.id)
+          .then(() => statusDrive(`☁ Ata e Word salvos no Drive às ${horaAgora()}`, 'ok'))
+          .catch((e) => toast('Word não foi para o Drive: ' + e.message, true)));
+      }
     } catch (e) { toast('Erro ao gerar o Word: ' + e.message, true); console.error(e); }
   }
 
@@ -462,8 +614,21 @@
     document.addEventListener('change', aoEditar);
 
     $('#btn-nova').onclick = novaAta;
-    $('#btn-historico').onclick = () => { $('#busca-hist').value = ''; desenharHistorico(); $('#dlg-historico').showModal(); };
-    $('#busca-hist').oninput = desenharHistorico;
+    $('#btn-historico').onclick = () => { $('#busca-hist').value = ''; abaHist = Drive.estado().configurado ? 'drive' : 'local'; desenharHistorico(true); $('#dlg-historico').showModal(); };
+    $('#busca-hist').oninput = () => desenharHistorico();
+    $$('[data-hist]').forEach((b) => b.onclick = () => { abaHist = b.dataset.hist; desenharHistorico(); });
+    $('#btn-enviar-locais').onclick = async () => {
+      const lista = atas.filter((a) => !a.driveId);
+      $('#btn-enviar-locais').disabled = true;
+      for (const a of lista) await salvarNoDrive(a);
+      $('#btn-enviar-locais').disabled = false; desenharHistorico(true); toast(`${lista.length} ata(s) enviada(s) para o Drive.`);
+    };
+    $('#btn-drive').onclick = () => {
+      if (Drive.estado().conectado) { abaHist = 'drive'; $('#busca-hist').value = ''; desenharHistorico(true); $('#dlg-historico').showModal(); }
+      else conectarDrive();
+    };
+    $('#btn-drive-sair').onclick = () => { Drive.sair(); statusDrive(''); toast('Google Drive desconectado neste aparelho.'); };
+    Drive.aoMudar(atualizarBotaoDrive);
     $('#lista-hist').onclick = acaoHistorico;
     $('#btn-config').onclick = abrirConfig;
     $('#dlg-config').addEventListener('close', () => { if ($('#dlg-config').returnValue === 'ok') salvarConfig(); });
@@ -508,7 +673,11 @@
     });
   }
 
+  function nomePastaDrive() { return `Atas - Loja Maçônica ${cfg.loja.nome} nº ${cfg.loja.numero}`; }
+
   ligar();
+  Drive.configurar(cfg.drive.clientId, nomePastaDrive());
+  atualizarBotaoDrive();
   preencherForm();
   limparIA();
   if (!cfg.oficiais.vm && !atas.length) setTimeout(() => { toast('Bem-vindo! Comece pelas Configurações: oficiais, numeração e chave da IA.'); }, 600);
